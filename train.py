@@ -33,10 +33,17 @@ if sanity_check:
     dataset["test"] = dataset["test"].select(range(20))
 
 dataset = dataset.filter(lambda x: x["path"] != 'None', num_proc=n_cpu)
+print(dataset["train"][0])
+
+# Select Dataset
+# Use only STT_AB
+dataset = dataset.filter(lambda x: x["path"].split("/")[-1].startswith("STT_AB"), num_proc=n_cpu-1)
+
+print(f"[INFO] Train({len(dataset['train'])}), Test({len(dataset['test'])})")
+
 dataset['train'] = dataset['train'].cast_column("path", Audio(sampling_rate=16000))
 dataset['test'] = dataset['test'].cast_column("path", Audio(sampling_rate=16000))
 
-print(f"[INFO] Train({len(dataset['train'])}), Test({len(dataset['test'])})")
 
 def to_wylie(example):
     example["sentence"] = converter.toWylie(example["uni"])
@@ -144,12 +151,11 @@ def prepare_dataset(example):
 
 
 dataset['train'] = dataset['train'].map(
-    prepare_dataset, remove_columns=dataset['train'].column_names, num_proc=10
+    prepare_dataset, remove_columns=dataset['train'].column_names, num_proc=1
 )
 dataset['test'] = dataset['test'].map(
-    prepare_dataset, remove_columns=dataset['test'].column_names, num_proc=10
+    prepare_dataset, remove_columns=dataset['test'].column_names, num_proc=1
 )
-
 
 def is_not_too_long(input_ids):
     input_length = len(input_ids)
@@ -157,6 +163,7 @@ def is_not_too_long(input_ids):
 
 dataset = dataset.filter(is_not_too_long, input_columns=["input_ids"])
 
+print(f"[INFO] Removed Long Inputs: Train({len(dataset['train'])}), Test({len(dataset['test'])})")
 
 
 from dataclasses import dataclass
