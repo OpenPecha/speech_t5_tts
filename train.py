@@ -32,12 +32,8 @@ if sanity_check:
     dataset["train"] = dataset["train"].select(range(100))
     dataset["test"] = dataset["test"].select(range(20))
 
-dataset = dataset.filter(lambda x: x["path"] != 'None', num_proc=n_cpu)
+dataset = dataset.filter(lambda x: x["path"] and x["path"] != "None", num_proc=n_cpu)
 print(dataset["train"][0])
-
-# Select Dataset
-# Use only STT_AB
-dataset = dataset.filter(lambda x: x["path"].split("/")[-1].startswith("STT_AB"), num_proc=n_cpu-1)
 
 print(f"[INFO] Train({len(dataset['train'])}), Test({len(dataset['test'])})")
 
@@ -50,7 +46,6 @@ def to_wylie(example):
     return example
 
 dataset = dataset.map(to_wylie, num_proc=n_cpu)
-
 
 tokenizer = processor.tokenizer
 a = tokenizer.get_vocab().items()
@@ -123,47 +118,42 @@ def create_speaker_embedding(waveform):
         speaker_embeddings = speaker_embeddings.squeeze().cpu().numpy()
     return speaker_embeddings
 
-
-def prepare_dataset(example):
+def prepare_dataset(batch):
     # load the audio data; if necessary, this resamples the audio to 16kHz
-    batch=example
-    audio = example["path"]
+    audio_batch = batch["path"]
+    sentence_batch = batch["sentence"]
+    audio_array_batch = [audio["array"] for audio in audio_batch]
+    sampling_rate = audio_batch[0]["sampling_rate"]
 
-    # feature extraction and tokenization
     example = processor(
-        text=example["sentence"],
-        audio_target=audio["array"],
-        sampling_rate=audio["sampling_rate"],
+        text=sentence_batch,
+        audio_target=audio_array_batch,
+        sampling_rate=sampling_rate,
         return_attention_mask=False,
     )
 
-    # strip off the batch dimension
-    example["labels"] = example["labels"][0]
-    example["path"] = audio['path']
+    example["sentence"] = sentence_batch
+    example["labels"] = [label for label in example["labels"]]
+    example["path"] = audio_batch
     example["speaker"] = batch['speaker_id']
     example["uni"] = batch["uni"]
-    
-
-    # use SpeechBrain to obtain x-vector
-    example["speaker_embeddings"] = create_speaker_embedding(audio["array"])
+    example["speaker_embeddings"] = [create_speaker_embedding(array) for array in audio_array_batch]
 
     return example
 
-
 dataset['train'] = dataset['train'].map(
-    prepare_dataset, remove_columns=dataset['train'].column_names, num_proc=1
+    prepare_dataset, 
+    remove_columns=dataset['train'].column_names, 
+    batched=True,
+    batch_size=32
 )
+
 dataset['test'] = dataset['test'].map(
-    prepare_dataset, remove_columns=dataset['test'].column_names, num_proc=1
+    prepare_dataset, 
+    remove_columns=dataset['test'].column_names, 
+    batched=True,
+    batch_size=32
 )
-
-def is_not_too_long(input_ids):
-    input_length = len(input_ids)
-    return input_length < 600
-
-dataset = dataset.filter(is_not_too_long, input_columns=["input_ids"])
-
-print(f"[INFO] Removed Long Inputs: Train({len(dataset['train'])}), Test({len(dataset['test'])})")
 
 
 from dataclasses import dataclass
@@ -216,8 +206,8 @@ data_collator = TTSDataCollatorWithPadding(processor=processor)
 from transformers import Seq2SeqTrainingArguments
 
 training_args = Seq2SeqTrainingArguments(
-    output_dir="./TTS_st5_25102024",  # change to a repo name of your choice
-    per_device_train_batch_size=64,
+    output_dir="./TTS_st5_26102024",  # change to a repo name of your choice
+    per_device_train_batch_size=128,
     gradient_accumulation_steps=1,
     num_train_epochs=30,
     learning_rate=1e-5,
@@ -250,4 +240,4 @@ torch.cuda.empty_cache()
 
 trainer.train()
 
-model.push_to_hub('TTS-run-25-10-2024')
+model.push_to_hub('TTS-ST5-26102024')
