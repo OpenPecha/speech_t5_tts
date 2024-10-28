@@ -7,3 +7,4 @@ speechbrain
 transformers
 accelerate
 pyewts
+matplotlib
