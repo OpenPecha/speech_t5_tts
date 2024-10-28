@@ -8,3 +8,7 @@ transformers
 accelerate
 pyewts
 matplotlib
+requests
+bophono
+botok
+wandb

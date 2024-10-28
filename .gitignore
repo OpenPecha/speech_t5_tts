@@ -6,4 +6,4 @@ wandb/
 TTS_st5_25102024/
 TTS_st5_26102024/
 TTS_st5_test/
-
+__pycache__
