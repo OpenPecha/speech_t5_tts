@@ -11,3 +11,4 @@ __pycache__
 finetune-hf-vits/
 bod_model
 *.log
+**/tmp/*

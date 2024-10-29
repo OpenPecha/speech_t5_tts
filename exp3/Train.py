@@ -460,7 +460,7 @@ model.config.use_cache = False
 models_path = data_path / "models" / "exp3"
 models_path.mkdir(exist_ok=True, parents=True)
 
-model_name = "TTS_st5_phono_test"
+model_name = "TTS_st5_phono_29102024"
 model_path = models_path / model_name
 
 
@@ -480,10 +480,10 @@ training_args = Seq2SeqTrainingArguments(
     fp16=True,
     evaluation_strategy="steps",
     per_device_eval_batch_size=16,
-    save_steps=3000,
-    eval_steps=2000,
+    save_steps=2000,
+    eval_steps=1000,
     logging_steps=100,
-    save_total_limit=5,
+    save_total_limit=10,
     report_to=["wandb"],
     label_names=["labels"],
 )
