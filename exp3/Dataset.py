@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[66]:
+# In[25]:
 
 
 from pathlib import Path
@@ -24,7 +24,7 @@ from IPython.display import display
 from phonetic import text2phon
 
 
-# In[45]:
+# In[26]:
 
 
 n_cpu = multiprocessing.cpu_count()-5; print("CPU count:", n_cpu)
@@ -33,7 +33,7 @@ audio_path = data_path / "audio"
 audio_path.mkdir(parents=True, exist_ok=True)
 
 
-# In[46]:
+# In[27]:
 
 
 processor = SpeechT5Processor.from_pretrained("microsoft/speecht5_tts")
@@ -41,7 +41,7 @@ processor = SpeechT5Processor.from_pretrained("microsoft/speecht5_tts")
 
 # ## Load the dataset
 
-# In[47]:
+# In[28]:
 
 
 dataset_name = "openpecha/tts-training-filtered"
@@ -49,7 +49,7 @@ dataset = load_dataset(dataset_name)
 dataset
 
 
-# In[48]:
+# In[29]:
 
 
 dataset["train"][100]["uni"]
@@ -60,13 +60,13 @@ dataset["train"][100]["uni"]
 # ### Ignore Long Audio
 # Some of the examples in the dataset are apparently longer than the maximum input length the model can handle (600 tokens), so we should remove those from the dataset. In fact, to allow for larger batch sizes we'll remove anything over 200 tokens.
 
-# In[49]:
+# In[30]:
 
 
 dataset = concatenate_datasets([dataset["train"], dataset["test"]])
 
 
-# In[50]:
+# In[31]:
 
 
 def compute_tokens_len(item):
@@ -77,13 +77,13 @@ def compute_tokens_len(item):
 dataset = dataset.map(compute_tokens_len, num_proc=n_cpu)
 
 
-# In[51]:
+# In[32]:
 
 
 dataset[0]["tokens_len"]
 
 
-# In[52]:
+# In[33]:
 
 
 def plot_token_len_histogram(token_lengths):
@@ -100,20 +100,20 @@ def plot_token_len_histogram(token_lengths):
     plt.show()
 
 
-# In[53]:
+# In[34]:
 
 
 # plot_token_len_histogram(dataset["tokens_len"])
 
 
-# In[54]:
+# In[35]:
 
 
 dataset = dataset.filter(lambda x: x["tokens_len"]<200, num_proc=n_cpu)
 len(dataset)
 
 
-# In[56]:
+# In[36]:
 
 
 # plot_token_len_histogram(dataset["tokens_len"])
@@ -121,7 +121,7 @@ len(dataset)
 
 # ### Balance out Departments
 
-# In[57]:
+# In[37]:
 
 
 def plot_department_dist(dataset):
@@ -150,57 +150,59 @@ def plot_department_dist(dataset):
     plt.show()
 
 
-# In[58]:
+# In[38]:
 
 
-# plot_department_dist(dataset)
+plot_department_dist(dataset)
 
 
-# In[59]:
+# ### Select only SST_NW, STT_AB, STT_NS
+
+# In[43]:
 
 
 def get_balance_dataset(dataset, total, seed=42):
     ab_dataset = dataset.filter(lambda x: x["label"] == "STT_AB", num_proc=n_cpu).shuffle(seed=seed)
     nw_dataset = dataset.filter(lambda x: x["label"] == "STT_NW", num_proc=n_cpu).shuffle(seed=seed)
-    hs_dataset = dataset.filter(lambda x: x["label"] == "STT_HS", num_proc=n_cpu).shuffle(seed=seed)
-    pc_dataset = dataset.filter(lambda x: x["label"] == "STT_PC", num_proc=n_cpu).shuffle(seed=seed)
     ns_dataset = dataset.filter(lambda x: x["label"] == "STT_NS", num_proc=n_cpu).shuffle(seed=seed)
 
     ab_dataset = ab_dataset.select(range(total//5))
     nw_dataset = nw_dataset.select(range(total//5))
-    hs_dataset = hs_dataset.select(range(total//5))
-    pc_dataset = pc_dataset.select(range(total//5))
     ns_dataset = ns_dataset.select(range(total//5))
 
     ab_dataset = ab_dataset.train_test_split(test_size=0.2, seed=42)
     nw_dataset = nw_dataset.train_test_split(test_size=0.2, seed=42)
-    hs_dataset = hs_dataset.train_test_split(test_size=0.2, seed=42)
-    pc_dataset = pc_dataset.train_test_split(test_size=0.2, seed=42)
     ns_dataset = ns_dataset.train_test_split(test_size=0.2, seed=42)
 
 
     dataset = DatasetDict({
-        "train": concatenate_datasets([ab_dataset["train"], nw_dataset["train"], hs_dataset["train"], pc_dataset["train"], ns_dataset["train"]]),
-        "test": concatenate_datasets([ab_dataset["test"], nw_dataset["test"], hs_dataset["test"], pc_dataset["test"], ns_dataset["test"]])
+        "train": concatenate_datasets([ab_dataset["train"], nw_dataset["train"], ns_dataset["train"]]),
+        "test": concatenate_datasets([ab_dataset["test"], nw_dataset["test"], ns_dataset["test"]])
     })
 
     return dataset
 
 
-# In[69]:
+# In[44]:
 
 
 balanced_dataset = get_balance_dataset(dataset, total=300000)
-len(balanced_dataset)
+balanced_dataset
 
 
-# In[61]:
+# In[ ]:
 
 
-# plot_department_dist(concatenate_datasets([balanced_dataset["train"], balanced_dataset["test"]]))
 
 
-# In[62]:
+
+# In[45]:
+
+
+plot_department_dist(concatenate_datasets([balanced_dataset["train"], balanced_dataset["test"]]))
+
+
+# In[46]:
 
 
 dataset = balanced_dataset
@@ -208,7 +210,7 @@ dataset = balanced_dataset
 
 # ## Set Audio file path
 
-# In[63]:
+# In[47]:
 
 
 def download_image(url, save_path):

@@ -460,7 +460,7 @@ model.config.use_cache = False
 models_path = data_path / "models" / "exp3"
 models_path.mkdir(exist_ok=True, parents=True)
 
-model_name = "TTS_st5_phono_29102024"
+model_name = "TTS_st5_phono_160k"
 model_path = models_path / model_name
 
 
@@ -471,18 +471,18 @@ from transformers import Seq2SeqTrainingArguments
 
 training_args = Seq2SeqTrainingArguments(
     output_dir=str(model_path),
-    per_device_train_batch_size=64,
-    gradient_accumulation_steps=16,
+    per_device_train_batch_size=32,
+    gradient_accumulation_steps=1,
     num_train_epochs=30,
     learning_rate=1e-5,
     warmup_steps=500,
-    gradient_checkpointing=True,
+    gradient_checkpointing=False,
     fp16=True,
     evaluation_strategy="steps",
-    per_device_eval_batch_size=16,
-    save_steps=2000,
-    eval_steps=1000,
-    logging_steps=100,
+    per_device_eval_batch_size=8,
+    save_steps=3000,
+    eval_steps=2000,
+    logging_steps=5,
     save_total_limit=10,
     report_to=["wandb"],
     label_names=["labels"],
@@ -518,23 +518,6 @@ trainer.train()
 
 
 # If we do one more `push_to_hub()` after training we can get a nice model card built for us. We simply have to set the appropriate keyword arguments (kwargs). You can change these values to match your dataset, language and model name accordingly:
-
-# In[ ]:
-
-
-kwargs = {
-    "dataset_tags": "facebook/voxpopuli",
-    "dataset": "VoxPopuli",  # a 'pretty' name for the training dataset
-    "dataset_args": "config: nl, split: train",
-    "language": "nl",
-    "model_name": "SpeechT5 TTS Dutch",  # a 'pretty' name for your model
-    "finetuned_from": "microsoft/speecht5_tts",
-    "tasks": "text-to-speech",
-    "tags": "",
-}
-
-
-# The training results can now be uploaded to the Hub. To do so, execute the `push_to_hub` command:
 
 # You can now share this model with anyone using the link on the Hub.
 
